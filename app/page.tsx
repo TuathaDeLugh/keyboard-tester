@@ -1,13 +1,16 @@
+import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
 import TKLKeyboard from "@/components/TKL";
-import Image from "next/image";
 
 export default function Home() {
   return (
     <main className="">
-            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-4xl font-bold mb-8">TKL Keyboard Tester</h1>
+      <Navbar/>
+            <div className="flex flex-col items-center justify-center min-h-[93dvh] bg-gray-600">
+      <h1 className="text-4xl font-bold mb-8 text-white">Keyboard Tester</h1>
       <TKLKeyboard />
     </div>
+    <Footer/>
     </main>
   );
 }

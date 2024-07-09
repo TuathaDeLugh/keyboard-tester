@@ -1,9 +1,19 @@
-'use client'
+'use client';
 import React, { useState, useEffect } from 'react';
+
+interface Keyboard {
+  getLayoutMap(): Promise<Map<string, string>>;
+}
+
+interface NavigatorWithKeyboard extends Navigator {
+  keyboard?: Keyboard;
+}
 
 const TKLKeyboard: React.FC = () => {
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
   const [initialPressedKeys, setInitialPressedKeys] = useState<Set<string>>(new Set());
+  const [isBoxActive, setIsBoxActive] = useState<boolean>(false);
+  const [isKeyboardPresent, setIsKeyboardPresent] = useState<boolean | null>(null);
 
   const fRowLayout = [
     [{ key: 'F1' }, { key: 'F2' }, { key: 'F3' }, { key: 'F4' }],
@@ -68,26 +78,50 @@ const TKLKeyboard: React.FC = () => {
     { key: 'ArrowRight', display: '→' }
   ];
 
+  const checkKeyboardPresence = async () => {
+    const nav = navigator as NavigatorWithKeyboard;
+    if (nav.keyboard) {
+      try {
+        const keyboards = await nav.keyboard.getLayoutMap();
+        setIsKeyboardPresent(keyboards.size > 0);
+      } catch (error) {
+        console.error('Error detecting keyboard:', error);
+        setIsKeyboardPresent(false);
+      }
+    } else {
+      setIsKeyboardPresent(true);
+      console.warn('Keyboard API not supported, assuming keyboard is present');
+    }
+  };
+
+  useEffect(() => {
+    checkKeyboardPresence();
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      event.preventDefault();
-      setPressedKeys((prev) => new Set(prev).add(event.code));
-      setInitialPressedKeys((prev) => {
-        const newSet = new Set(prev);
-        if (!newSet.has(event.code)) {
-          newSet.add(event.code);
-        }
-        return newSet;
-      });
+      if (isBoxActive) {
+        event.preventDefault();
+        setPressedKeys((prev) => new Set(prev).add(event.code));
+        setInitialPressedKeys((prev) => {
+          const newSet = new Set(prev);
+          if (!newSet.has(event.code)) {
+            newSet.add(event.code);
+          }
+          return newSet;
+        });
+      }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      event.preventDefault();
-      setPressedKeys((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(event.code);
-        return newSet;
-      });
+      if (isBoxActive) {
+        event.preventDefault();
+        setPressedKeys((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(event.code);
+          return newSet;
+        });
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -97,7 +131,7 @@ const TKLKeyboard: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [isBoxActive]);
 
   const resetKeys = () => {
     setPressedKeys(new Set());
@@ -118,13 +152,24 @@ const TKLKeyboard: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col items-center bg-gray-100 p-8">
-      <div className="bg-gray-800 rounded-lg shadow-lg p-4 flex gap-4">
+    <div className="flex flex-col items-center p-8">
+    {isKeyboardPresent === null ? (
+      <p>Detecting keyboard...</p>
+    ) : isKeyboardPresent ? (
+      <>
+      {/* Box to activate custom key handling */}
+      <div className={` relative bg-gray-800 rounded-lg shadow-lg p-4 flex gap-4`}
+      onClick={() => setIsBoxActive(!isBoxActive)}>
+        <div className={`absolute flex flex-col items-center justify-center top-0 bottom-0 left-0 right-0 rounded-lg text-lg text-gray-200 backdrop-blur-md ${isBoxActive ? ' opacity-0' : ' opacity-100'} transition-opacity duration-200 `}>
+        <p>Click Here to Start Testing</p>
+        <p className='text-xs'>click again to stop</p>
+        </div>
+        
 
         {/* F row & Main */}
         <div className="flex flex-col gap-4">
           <div className="flex justify-between">
-            {renderKey('Escape','Esc')}
+            {renderKey('Escape', 'Esc')}
 
             <div className="f-row flex gap-6">
               {fRowLayout.map((row, index) => (
@@ -135,7 +180,7 @@ const TKLKeyboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 ">
+          <div className="flex gap-2">
             <div className="grid gap-1">
               {mainLayout.map((row, index) => (
                 <div key={index} className="flex gap-1">
@@ -145,35 +190,43 @@ const TKLKeyboard: React.FC = () => {
             </div>
           </div>
         </div>
-
-
-        <div className=" flex flex-col gap-4">
-
-        <div className="three hot keys col-span-1 flex gap-1">
-          {threeHotkeys.map((key) => (renderKey(key.key, key.display!)))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-1">
-            {navClusterLayout.map((key) => ( renderKey(key.key, key.display!)
-            ))}
+        {/* hotkeys & aero */}
+        <div className="flex flex-col gap-4">
+          <div className="three hot keys col-span-1 flex gap-1">
+            {threeHotkeys.map((key) => renderKey(key.key, key.display!))}
           </div>
 
-        <div className="grid grid-cols-3 gap-1 mt-10 ">
+          <div className="grid grid-cols-3 gap-1">
+            {navClusterLayout.map((key) => renderKey(key.key, key.display!))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-1 mt-10">
             <div className="col-start-2">{renderKey(arrowLayout[0].key, arrowLayout[0].display)}</div>
             <div className="col-span-3 flex gap-1">
               {arrowLayout.slice(1).map((key) => renderKey(key.key, key.display))}
             </div>
           </div>
         </div>
-
-
       </div>
+      <div className="grid grid-flow-row grid-cols-2 gap-4">
+
+      <button
+        onClick={() => setIsBoxActive(!isBoxActive)}
+        className="mt-4 px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-200"
+        >
+        {isBoxActive ? 'Stop' : 'Start'}
+      </button>
       <button
         onClick={resetKeys}
         className="mt-4 px-6 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-200"
-      >
+        >
         Reset
       </button>
+        </div>
+        </>
+        ) : (
+          <p className="text-xl text-red-500 font-bold">NO PHYSICAL KEYBOARD FOUND</p>
+        )}
     </div>
   );
 };
