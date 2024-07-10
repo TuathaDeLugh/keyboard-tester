@@ -1,19 +1,10 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 
-interface Keyboard {
-  getLayoutMap(): Promise<Map<string, string>>;
-}
-
-interface NavigatorWithKeyboard extends Navigator {
-  keyboard?: Keyboard;
-}
-
 const TKLKeyboard: React.FC = () => {
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
   const [initialPressedKeys, setInitialPressedKeys] = useState<Set<string>>(new Set());
   const [isBoxActive, setIsBoxActive] = useState<boolean>(false);
-  const [isKeyboardPresent, setIsKeyboardPresent] = useState<boolean | null>(null);
 
   const fRowLayout = [
     [{ key: 'F1' }, { key: 'F2' }, { key: 'F3' }, { key: 'F4' }],
@@ -78,26 +69,6 @@ const TKLKeyboard: React.FC = () => {
     { key: 'ArrowRight', display: '→' }
   ];
 
-  const checkKeyboardPresence = async () => {
-    const nav = navigator as NavigatorWithKeyboard;
-    if (nav.keyboard) {
-      try {
-        const keyboards = await nav.keyboard.getLayoutMap();
-        setIsKeyboardPresent(keyboards.size > 0);
-      } catch (error) {
-        console.error('Error detecting keyboard:', error);
-        setIsKeyboardPresent(false);
-      }
-    } else {
-      setIsKeyboardPresent(true);
-      console.warn('Keyboard API not supported, assuming keyboard is present');
-    }
-  };
-
-  useEffect(() => {
-    checkKeyboardPresence();
-  }, []);
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isBoxActive) {
@@ -152,11 +123,9 @@ const TKLKeyboard: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col items-center p-8">
-    {isKeyboardPresent === null ? (
-      <p>Detecting keyboard...</p>
-    ) : isKeyboardPresent ? (
-      <>
+    <>
+    <div className="hidden md:flex flex-col items-center p-8">
+    
       {/* Box to activate custom key handling */}
       <div className={` relative bg-gray-800 rounded-lg shadow-lg p-4 flex gap-4`}
       onClick={() => setIsBoxActive(!isBoxActive)}>
@@ -191,7 +160,7 @@ const TKLKeyboard: React.FC = () => {
           </div>
         </div>
         {/* hotkeys & aero */}
-        <div className="flex flex-col gap-4">
+        <div className="hidden lg:flex flex-col gap-4">
           <div className="three hot keys col-span-1 flex gap-1">
             {threeHotkeys.map((key) => renderKey(key.key, key.display!))}
           </div>
@@ -223,11 +192,13 @@ const TKLKeyboard: React.FC = () => {
         Reset
       </button>
         </div>
-        </>
-        ) : (
-          <p className="text-xl text-red-500 font-bold">NO PHYSICAL KEYBOARD FOUND</p>
-        )}
     </div>
+
+
+    <div className='block md:hidden text-lg text-white'>
+        only works in large screen
+    </div>
+        </>
   );
 };
 
